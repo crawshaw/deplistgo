@@ -50,8 +50,8 @@ func main() {
 
 	fdlimit := make(chan struct{}, 128)
 	var wg sync.WaitGroup
-	var scan func(path string)
-	scan = func(path string) {
+	var scan func(path, srcDir string)
+	scan = func(path, srcDir string) {
 		defer wg.Done()
 
 		mu.Lock()
@@ -68,7 +68,7 @@ func main() {
 		fdlimit <- struct{}{}
 		defer func() { <-fdlimit }()
 
-		pkg, err := ctx.Import(path, "", 0)
+		pkg, err := ctx.Import(path, srcDir, 0)
 		if err != nil {
 			log.Fatalf("%s: %v", path, err)
 		}
@@ -102,13 +102,13 @@ func main() {
 
 		for _, imp := range pkg.Imports {
 			wg.Add(1)
-			go scan(imp)
+			go scan(imp, pkg.Dir)
 		}
 	}
 
 	for _, root := range roots {
 		wg.Add(1)
-		go scan(root)
+		go scan(root, "")
 	}
 	wg.Wait()
 
